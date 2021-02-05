@@ -1,0 +1,11 @@
+[Unit]
+Description=ADS1115 reading a current measured by ct-clamp's
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/ads1115-current-sensor.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
