@@ -31,62 +31,71 @@
 #  ads1115-current-sensor-installer v0.1
 #  (c) 2021, Elias Thoma
 #  This script provides an easy way to install everything needed to use the ads1115 from adafruit and ct-clamp's to
-#  measure the current in flowing in your electric house installation.
+#  measure the current flowing in your electric house installation.
 #  
 #  To install the latest version of 'ads1115-current-sensor':
 #       Run as root:  
-#       curl -s https://raw.githubusercontent.com/sbfspot/sbfspot-config/master/sbfspot-config | sudo bash
-#
-#
-#
-#
-#
+#       curl -s https://raw.githubusercontent.com/ei1902/ads1115-current-sensor/master/ads1115-current-sensor-installer.sh | sudo bash
 #
 
 optstring=":h"
 
-readonly url_master="http://github.com/et1902/ads1115-current-sensor"
+readonly url="http://github.com/et1902/ads1115-current-senor/archive/master.zip"
 
-function usage
+readonly tmp_dir="/var/tmp/ads1115-current-sensor-installer/"
+
+usage()
 {
     echo "Python current sensor installer."
-    echo "./install.sh"
+    echo "./ads1115-current-sensor-installer.sh"
 }
 
-function main
+main()
 {
+    download_files()
+    askYesNo "Enable MQTT?" false
+
+    if [ "$ANSWER" = true ]; then
+        read -p 'MQTT-Host: ' mqtt_host
+        read -p 'MQTT-Topic: ' mqtt_topic
+        read -p 'MQTT-Username: ' mqtt_username
+        read -p 'MQTT-Password: ' mqtt_password       
+        configure_mqtt(mqtt_host, mqtt_topic, mqtt_username, mqtt_password)
+    fi
+
     setup_ads1115()
 
-    #TODO: ask for intervall
-
-    # Final step: starting to script
+    # Final step: starting script
     systemctl start ads1115-current-sensor
 }
 
-function download_files
+download_files()
 {
-    echo "Downloading $url_releases/download/V$install_release/$targz"
-    wget -o"$tmp_dir/wget.txt" -NP "$tmp_dir" "$url_releases/download/V$install_release/$targz"
+    echo "- downloading $url"
+    wget -o"$tmp_dir/wget.txt" -NP "$tmp_dir" "$url"
 }
 
-function setup_ads1115
+setup_ads1115()
 {
+    echo "- installing necessary python libraries for ads1115"
     # Install required python libraries
     sudo pip3 install --upgrade adafruit-python-shell adafruit-circuitpython-ads1x15
     wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/raspi-blinka.py
     sudo python3 raspi-blinka.py
 }
 
-function setup_mqtt
+setup_mqtt()
 {
     # Install required python libraries
     sudo pip3 install paho-mqtt
+}
 
-    #TODO: ask for mqtt ip and topic and subsitute those in script
+configure_mqtt()
+{
 
 }
 
-function setup_api
+setup_api()
 {
     # Install required python libraries
     sudo pip3 install requests
@@ -94,14 +103,35 @@ function setup_api
     #TODO: ask for api host and api key and subsitute those in script
 }
 
-function install_service
+install_service()
 {
+    echo "- installing ads-current-sensor.service"
     systemctl stop ads1115-current-sensor
 
-    cp "$tmp_dir/ads1115-current-sensor.service" "/etc/systemd/system/ads-current-sensor.service"
+    cp "$tmp_dir/ads1115-current-sensor.service" "/etc/systemd/system/ads1115-current-sensor.service"
 
     #TODO: ask if service should be automatically started at boot time
     systemctl enable ads1115-current-sensor
+}
+
+function askYesNo {
+    QUESTION=$1
+    DEFAULT=$2
+    if [ "$DEFAULT" = true ]; then
+            OPTIONS="[Y/n]"
+            DEFAULT="y"
+        else
+            OPTIONS="[y/N]"
+            DEFAULT="n"
+    fi
+    read -p "$QUESTION $OPTIONS " -n 1 -s -r INPUT
+    INPUT=${INPUT:-${DEFAULT}}
+    echo ${INPUT}
+    if [[ "$INPUT" =~ ^[yY]$ ]]; then
+        ANSWER=true
+    else
+        ANSWER=false
+    fi
 }
 
 while getopts ${optstring} arg; do
